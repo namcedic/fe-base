@@ -3,11 +3,12 @@ import { ConfigProvider } from 'antd';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import React from 'react';
-
-import { Toaster } from '@/components/common/Toaster';
-import { ReactQueryProvider } from '@/providers/ReactQueryProvider';
 import '@/styles/globals.scss';
 import './globals.css';
+import { Toaster } from 'react-hot-toast';
+
+import { ReactQueryProvider } from '@/providers/ReactQueryProvider';
+import { ReduxProvider } from '@/providers/ReduxProvider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -32,10 +33,12 @@ export default function RootLayout({
               },
             }}
           >
-            <ReactQueryProvider>
-              {children}
-              <Toaster />
-            </ReactQueryProvider>
+            <ReduxProvider>
+              <ReactQueryProvider>
+                {children}
+                <Toaster />
+              </ReactQueryProvider>
+            </ReduxProvider>
           </ConfigProvider>
         </AntdRegistry>
       </body>

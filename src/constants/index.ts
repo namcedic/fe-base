@@ -19,6 +19,7 @@ export const STORAGE_KEYS = {
   TOKEN_EXPIRES_AT: 'token_expires_at',
   USER: 'user',
   THEME: 'theme',
+  BE_USER: 'be_user',
 } as const;
 
 export const AUTH_REFRESH_POLICY = {
