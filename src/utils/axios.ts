@@ -1,118 +1,200 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
-import { SERVICE_PREFIX } from '@/constants';
-import { clearAuthTokens, getAuthTokens, setAuthTokens } from '@/utils/tokenStorage';
+import { API_ENDPOINTS, AUTH_REFRESH_POLICY, STORAGE_KEYS } from '@/constants';
 
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (value?: unknown) => void;
-  reject: (reason?: unknown) => void;
-}> = [];
-
-const processQueue = (error: Error | null, token: string | null = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
-    }
-  });
-
-  failedQueue = [];
+type RefreshResponse = {
+  accessToken?: string;
+  token?: string;
+  refreshToken?: string;
+  expiresAt?: number;
+  expiresIn?: number;
 };
 
 const axiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || `/${SERVICE_PREFIX}`,
+  baseURL: process.env.NEXT_PUBLIC_API_URL || '/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const calcBackoffDelayMs = (attemptIndex: number) => {
+  const exp = AUTH_REFRESH_POLICY.BASE_DELAY_MS * 2 ** attemptIndex;
+  const capped = Math.min(exp, AUTH_REFRESH_POLICY.MAX_DELAY_MS);
+  const jitter = Math.floor(Math.random() * AUTH_REFRESH_POLICY.JITTER_MS);
+  return capped + jitter;
+};
+
+const getAccessToken = () => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(STORAGE_KEYS.TOKEN);
+};
+
+const getRefreshToken = () => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+};
+
+const getExpiresAt = () => {
+  if (typeof window === 'undefined') return null;
+  const raw = localStorage.getItem(STORAGE_KEYS.TOKEN_EXPIRES_AT);
+  if (!raw) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+};
+
+const setAuthTokens = (payload: RefreshResponse) => {
+  if (typeof window === 'undefined') return;
+
+  const accessToken = payload.accessToken ?? payload.token;
+  if (accessToken) {
+    localStorage.setItem(STORAGE_KEYS.TOKEN, accessToken);
+  }
+
+  if (payload.refreshToken) {
+    localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, payload.refreshToken);
+  }
+
+  if (typeof payload.expiresAt === 'number') {
+    localStorage.setItem(STORAGE_KEYS.TOKEN_EXPIRES_AT, String(payload.expiresAt));
+  } else if (typeof payload.expiresIn === 'number') {
+    localStorage.setItem(
+      STORAGE_KEYS.TOKEN_EXPIRES_AT,
+      String(Date.now() + payload.expiresIn * 1000)
+    );
+  }
+};
+
+const clearAuthAndRedirect = () => {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(STORAGE_KEYS.TOKEN);
+  localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+  localStorage.removeItem(STORAGE_KEYS.TOKEN_EXPIRES_AT);
+  window.location.href = '/login';
+};
+
+let refreshInFlight: Promise<string | null> | null = null;
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+const scheduleProactiveRefresh = () => {
+  if (typeof window === 'undefined') return;
+
+  if (refreshTimer) {
+    clearTimeout(refreshTimer);
+    refreshTimer = null;
+  }
+
+  const expiresAt = getExpiresAt();
+  if (!expiresAt) return;
+
+  const msUntilRefresh = Math.max(
+    0,
+    expiresAt - Date.now() - AUTH_REFRESH_POLICY.REFRESH_BEFORE_EXPIRY_MS
+  );
+
+  refreshTimer = setTimeout(() => {
+    void refreshTokenWithRetry();
+  }, msUntilRefresh);
+};
+
+const refreshTokenWithRetry = async (): Promise<string | null> => {
+  if (typeof window === 'undefined') return null;
+
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = (async () => {
+    const rt = getRefreshToken();
+    if (!rt) {
+      clearAuthAndRedirect();
+      return null;
+    }
+
+    for (let attempt = 0; attempt < AUTH_REFRESH_POLICY.MAX_RETRIES; attempt++) {
+      try {
+        const res = await axiosInstance.post<RefreshResponse>(API_ENDPOINTS.AUTH.REFRESH, {
+          refreshToken: rt,
+        });
+
+        setAuthTokens(res.data);
+        scheduleProactiveRefresh();
+
+        return getAccessToken();
+      } catch {
+        const isLast = attempt === AUTH_REFRESH_POLICY.MAX_RETRIES - 1;
+        if (isLast) break;
+        await sleep(calcBackoffDelayMs(attempt));
+      }
+    }
+
+    clearAuthAndRedirect();
+    return null;
+  })().finally(() => {
+    refreshInFlight = null;
+  });
+
+  return refreshInFlight;
+};
+
+const shouldProactivelyRefresh = () => {
+  const expiresAt = getExpiresAt();
+  if (!expiresAt) return false;
+  return expiresAt - Date.now() <= AUTH_REFRESH_POLICY.REFRESH_BEFORE_EXPIRY_MS;
+};
+
 // Request interceptor
 axiosInstance.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    // Add auth token if available
+  async (config: InternalAxiosRequestConfig) => {
     if (typeof window !== 'undefined') {
-      const token = getAuthTokens()?.accessToken;
-      if (token && config.headers) {
+      if (shouldProactivelyRefresh() && !config.url?.includes(API_ENDPOINTS.AUTH.REFRESH)) {
+        await refreshTokenWithRetry();
+      }
+
+      const token = getAccessToken();
+      if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
+
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Response interceptor
 axiosInstance.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const status = error.response?.status;
+    const originalConfig = error.config as InternalAxiosRequestConfig | undefined;
 
-    // Handle 401 unauthorized
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
-      if (isRefreshing) {
-        // If already refreshing, queue this request
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
-            if (originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-            }
-            return axiosInstance(originalRequest);
-          })
-          .catch((err) => {
-            return Promise.reject(err);
-          });
+    if (
+      status === 401 &&
+      originalConfig &&
+      !originalConfig.url?.includes(API_ENDPOINTS.AUTH.REFRESH) &&
+      !(originalConfig as InternalAxiosRequestConfig & { _retry?: boolean })._retry
+    ) {
+      (originalConfig as InternalAxiosRequestConfig & { _retry?: boolean })._retry = true;
+
+      const newToken = await refreshTokenWithRetry();
+      if (newToken) {
+        originalConfig.headers = originalConfig.headers ?? {};
+        originalConfig.headers.Authorization = `Bearer ${newToken}`;
+        return axiosInstance(originalConfig);
       }
+    }
 
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        const refreshToken = getAuthTokens()?.refreshToken ?? null;
-        if (!refreshToken) {
-          throw new Error('No refresh token');
-        }
-
-        // Call refresh token API
-        const response = await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL || `/${SERVICE_PREFIX}`}/v1/auth/refresh`,
-          { refreshToken }
-        );
-
-        const { accessToken, refreshToken: newRefreshToken } = response.data.data;
-
-        setAuthTokens({ accessToken, refreshToken: newRefreshToken });
-
-        processQueue(null, accessToken);
-
-        if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        }
-
-        return axiosInstance(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError as Error, null);
-        // Clear tokens and redirect to login
-        if (typeof window !== 'undefined') {
-          clearAuthTokens();
-          window.location.href = '/login';
-        }
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
-      }
+    if (status === 401) {
+      clearAuthAndRedirect();
     }
 
     return Promise.reject(error);
   }
 );
+
+if (typeof window !== 'undefined') {
+  scheduleProactiveRefresh();
+}
 
 export default axiosInstance;

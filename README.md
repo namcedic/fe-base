@@ -136,4 +136,3 @@ Husky is configured to run lint-staged on pre-commit, which will:
 ## 📄 License
 
 MIT
-# fe-base

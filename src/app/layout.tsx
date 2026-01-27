@@ -6,8 +6,6 @@ import React from 'react';
 
 import { Toaster } from '@/components/common/Toaster';
 import { ReactQueryProvider } from '@/providers/ReactQueryProvider';
-import { ReduxProvider } from '@/providers/ReduxProvider';
-
 import '@/styles/globals.scss';
 import './globals.css';
 
@@ -34,12 +32,10 @@ export default function RootLayout({
               },
             }}
           >
-            <ReduxProvider>
-              <ReactQueryProvider>
-                {children}
-                <Toaster />
-              </ReactQueryProvider>
-            </ReduxProvider>
+            <ReactQueryProvider>
+              {children}
+              <Toaster />
+            </ReactQueryProvider>
           </ConfigProvider>
         </AntdRegistry>
       </body>
