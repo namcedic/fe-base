@@ -36,12 +36,12 @@ export function setAuthTokens(tokens: AuthTokens) {
     refreshToken: tokens.refreshToken,
     accessTokenExp,
   };
-  localStorage.setItem(STORAGE_KEYS.AUTH_TOKENS, JSON.stringify(toSave));
+  localStorage.setItem(STORAGE_KEYS.BE_USER, JSON.stringify(toSave));
 }
 
 export function clearAuthTokens() {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(STORAGE_KEYS.AUTH_TOKENS);
+  localStorage.removeItem(STORAGE_KEYS.BE_USER);
 }
 
 export function isTokenExpired(expMs?: number, skewMs = 0): boolean {

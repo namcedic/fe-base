@@ -1,5 +1,5 @@
 import type { Task } from 'redux-saga';
-import { call, cancel, delay, fork, put, select, takeEvery, takeLatest } from 'redux-saga/effects';
+import { call, cancel, delay, fork, put, select, takeEvery, takeLatest, race, take } from 'redux-saga/effects';
 
 import { authApi } from '@/apis/auth';
 import type { RootState } from '@/store';
@@ -104,6 +104,9 @@ function* handleHydrateFromStorage() {
   yield put(applyTokensFromStorage(tokens));
 }
 
+const REFRESH_BEFORE_EXP_MS = 120_000; // 2 minutes
+const REFRESH_MAX_ATTEMPTS = 3;
+
 function* scheduleAutoRefresh() {
   const state: RootState = yield select((s: RootState) => s);
   const accessToken = state.auth.accessToken;
@@ -114,10 +117,34 @@ function* scheduleAutoRefresh() {
   const expMs = tokens?.accessTokenExp;
   if (!expMs) return;
 
-  // refresh 60s before expiry (min 5s)
-  const msUntilRefresh = Math.max(expMs - Date.now() - 60_000, 5_000);
-  yield delay(msUntilRefresh);
-  yield put(refreshTokenRequest());
+  // Wait until `REFRESH_BEFORE_EXP_MS` before the access token expires (minimum 5s)
+  const msUntilRefresh = Math.max(expMs - Date.now() - REFRESH_BEFORE_EXP_MS, 5_000);
+  if (msUntilRefresh > 0) {
+    yield delay(msUntilRefresh);
+  }
+
+  // Try to refresh up to REFRESH_MAX_ATTEMPTS times with incremental back-off
+  for (let attempt = 0; attempt < REFRESH_MAX_ATTEMPTS; attempt += 1) {
+    yield put(refreshTokenRequest());
+
+    // Wait for either success or failure of this refresh attempt
+    const { success } = yield race({
+      success: take(refreshTokenSuccess.type),
+      failure: take(refreshTokenFailure.type),
+    });
+
+    if (success) {
+      // On success, the token-updated handler will cancel this task & schedule a new one
+      return;
+    }
+
+    // If failed and we still have attempts left, wait longer than the previous attempt
+    if (attempt < REFRESH_MAX_ATTEMPTS - 1) {
+      // Simple incremental back-off: wait (attempt + 1) * 30s → 30s, 60s
+      const waitMs = (attempt + 1) * 30_000;
+      yield delay(waitMs);
+    }
+  }
 }
 
 function* handleTokensUpdated() {
