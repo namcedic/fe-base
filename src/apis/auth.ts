@@ -1,0 +1,44 @@
+import { SERVICE_PREFIX } from '@/constants';
+import type {
+  LoginRequest,
+  RegisterRequest,
+  RefreshRequest,
+  AuthResponse,
+} from '@/store/auth/types';
+import type { ApiResponse } from '@/types';
+import axios from '@/utils/axios';
+
+const beBaseUrl = process.env.NEXT_PUBLIC_BE_DOMAIN || `http://localhost:3001/`;
+
+export const authApi = {
+  login: async (data: LoginRequest): Promise<ApiResponse<AuthResponse>> => {
+    const response = await axios.post(`${beBaseUrl + SERVICE_PREFIX}/v1/auth/login`, data);
+    return response.data;
+  },
+
+  register: async (data: RegisterRequest): Promise<ApiResponse<AuthResponse>> => {
+    const response = await axios.post(`${beBaseUrl + SERVICE_PREFIX}/v1/auth/register`, data);
+    return response.data;
+  },
+
+  refreshToken: async (data: RefreshRequest): Promise<ApiResponse<AuthResponse>> => {
+    const response = await axios.post(`${beBaseUrl + SERVICE_PREFIX}/v1/auth/refresh`, data);
+    return response.data;
+  },
+
+  changePassword: async (data: {
+    oldPassword: string;
+    newPassword: string;
+  }): Promise<ApiResponse> => {
+    const response = await axios.post(
+      `${beBaseUrl + SERVICE_PREFIX}/v1/auth/change-password`,
+      data
+    );
+    return response.data;
+  },
+
+  getSession: async (): Promise<ApiResponse<AuthResponse['user']>> => {
+    const response = await axios.get(`${beBaseUrl + SERVICE_PREFIX}/v1/auth/session`);
+    return response.data;
+  },
+};

@@ -1,0 +1,27 @@
+// Global SCSS styles
+@import './variables.scss';
+@import './mixins.scss';
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+// Ant Design overrides
+.ant-layout {
+  min-height: 100vh;
+}
+
+// Custom utilities
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
