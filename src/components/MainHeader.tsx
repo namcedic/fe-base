@@ -4,7 +4,7 @@ import Link from 'next/link';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 // import '@styles/main-header.scss';
 
-type MarketKey = 'yahoo_auction' | 'yahoo_shopping' | 'mercari' | 'rakuten' | 'paypay';
+type MarketKey = 'jan_hub' | 'yahoo_auction' | 'yahoo_shopping' | 'mercari' | 'rakuten' | 'paypay';
 
 type MarketItem = {
   key: MarketKey;
@@ -15,6 +15,11 @@ type MarketItem = {
 type TopSearchMap = Record<MarketKey, string[]>;
 
 const MARKET_ITEMS: MarketItem[] = [
+  {
+    key: 'jan_hub',
+    label: 'Jan Hub',
+    icon: <span className="mh-icon mh-icon-hub">⬢</span>,
+  },
   {
     key: 'yahoo_auction',
     label: 'Y! Auction',
@@ -43,6 +48,7 @@ const MARKET_ITEMS: MarketItem[] = [
 ];
 
 const TOP_SEARCH: TopSearchMap = {
+  jan_hub: ['Đồng hồ lô', 'zippo', 'ps4', 'macbook'],
   yahoo_auction: ['Đồng hồ lô', 'trang sức lô', 'zippo', 'synology', 'jazz', 'bose'],
   mercari: ['ポケモンフィギュア', 'trang sức lô', 'j4125', 'vantrue', 'b-daman'],
   yahoo_shopping: ['đồng hồ lô', 'xe đạp', 'imac', 'seiko', 'ipad', 'bianchi'],
@@ -66,7 +72,7 @@ function useClickOutside<T extends HTMLElement>(onOutside: () => void) {
 }
 
 export default function MainHeader() {
-  const [market, setMarket] = useState<MarketKey>('yahoo_auction');
+  const [market, setMarket] = useState<MarketKey>('jan_hub');
   const [isMarketOpen, setIsMarketOpen] = useState(false);
 
   const [q, setQ] = useState('');
@@ -88,7 +94,10 @@ export default function MainHeader() {
     setIsSuggestOpen(false);
   };
 
-  //   const currentMarketItem = MARKET_ITEMS.find((m) => m.key === market);
+  // show suggest only when there is input value
+  const handleFocusInput = () => {
+    if (q) setIsSuggestOpen(true);
+  };
 
   return (
     <header className="mh">
@@ -120,7 +129,6 @@ export default function MainHeader() {
 
               {isMarketOpen && (
                 <div className="mh-market__menu">
-                  <div className="mh-market__menuTitle">Jan Hub</div>
                   <div className="mh-market__menuList">
                     {MARKET_ITEMS.map((it) => (
                       <button
@@ -151,7 +159,7 @@ export default function MainHeader() {
                   placeholder="Nhập từ khoá hoặc link..."
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  onFocus={() => setIsSuggestOpen(true)}
+                  onFocus={handleFocusInput}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') onSubmit();
                     if (e.key === 'Escape') setIsSuggestOpen(false);
