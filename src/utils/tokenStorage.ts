@@ -1,5 +1,5 @@
-import { STORAGE_KEYS } from '@/constants';
-import type { AuthTokens } from '@/store/auth/types';
+import { STORAGE_KEYS } from '@root/constants';
+import type { AuthTokens } from '@root/store/auth/types';
 
 function safeJsonParse<T>(value: string | null): T | null {
   if (!value) return null;

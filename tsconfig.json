@@ -19,14 +19,19 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"],
-      "@/components/*": ["./src/components/*"],
-      "@/utils/*": ["./src/utils/*"],
-      "@/types/*": ["./src/types/*"],
-      "@/hooks/*": ["./src/hooks/*"],
-      "@/apis/*": ["./src/apis/*"],
-      "@/stores/*": ["./src/stores/*"],
-      "@/constants/*": ["./src/constants/*"]
+      "@root/*": ["./src/*"],
+      "@root/components/*": ["./src/components/*"],
+      "@root/utils/*": ["./src/utils/*"],
+      "@public/*": ["./public/*"],
+      "@root/types/*": ["./src/types/*"],
+      "@root/styles/*": ["./src/styles/*"],
+      "@root/assets/*": ["./src/public/assets/*"],
+      "@root/app/*": ["./src/app/*"],
+      "@root/hooks/*": ["./src/hooks/*"],
+      "@root/apis/*": ["./src/apis/*"],
+      "@root/stores/*": ["./src/stores/*"],
+      "@root/constants/*": ["./src/constants/*"],
+      "@styles/*": ["./src/styles/*"]
     }
   },
   "include": [

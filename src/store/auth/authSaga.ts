@@ -1,14 +1,25 @@
 import type { Task } from 'redux-saga';
-import { call, cancel, delay, fork, put, select, takeEvery, takeLatest, race, take } from 'redux-saga/effects';
+import {
+  call,
+  cancel,
+  delay,
+  fork,
+  put,
+  select,
+  takeEvery,
+  takeLatest,
+  race,
+  take,
+} from 'redux-saga/effects';
 
-import { authApi } from '@/apis/auth';
-import type { RootState } from '@/store';
+import { authApi } from '@root/apis/auth';
+import type { RootState } from '@root/store';
 import {
   clearAuthTokens,
   getAuthTokens,
   isTokenExpired,
   setAuthTokens,
-} from '@/utils/tokenStorage';
+} from '@root/utils/tokenStorage';
 
 import {
   applyTokensFromStorage,

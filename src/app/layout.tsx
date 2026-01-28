@@ -3,12 +3,12 @@ import { ConfigProvider } from 'antd';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import React from 'react';
-import '@/styles/globals.scss';
 import './globals.css';
+import '@styles/index.scss';
 import { Toaster } from 'react-hot-toast';
 
-import { ReactQueryProvider } from '@/providers/ReactQueryProvider';
-import { ReduxProvider } from '@/providers/ReduxProvider';
+import { ReactQueryProvider } from '@root/providers/ReactQueryProvider';
+import { ReduxProvider } from '@root/providers/ReduxProvider';
 
 const inter = Inter({ subsets: ['latin'] });
 

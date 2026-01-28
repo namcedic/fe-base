@@ -5,8 +5,8 @@ import { Button, Card, Form, Input, Typography, message } from 'antd';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
-import { useAppDispatch, useAppSelector } from '@/hooks';
-import { loginRequest } from '@/store/auth/authSlice';
+import { useAppDispatch, useAppSelector } from '@root/hooks';
+import { loginRequest } from '@root/store/auth/authSlice';
 
 const { Title, Text } = Typography;
 

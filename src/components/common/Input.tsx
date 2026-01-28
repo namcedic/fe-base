@@ -1,6 +1,6 @@
 import { Input as AntInput, InputProps as AntInputProps } from 'antd';
 
-import { cn } from '@/utils/cn';
+import { cn } from '@root/utils/cn';
 
 interface InputProps extends AntInputProps {
   className?: string;

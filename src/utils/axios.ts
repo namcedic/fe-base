@@ -1,6 +1,6 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
-import { API_ENDPOINTS, AUTH_REFRESH_POLICY, STORAGE_KEYS } from '@/constants';
+import { API_ENDPOINTS, AUTH_REFRESH_POLICY, STORAGE_KEYS } from '@root/constants';
 
 type RefreshResponse = {
   accessToken?: string;

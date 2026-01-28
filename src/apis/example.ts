@@ -1,5 +1,5 @@
-import type { ApiResponse } from '@/types';
-import axios from '@/utils/axios';
+import type { ApiResponse } from '@root/types';
+import axios from '@root/utils/axios';
 
 // Example API functions
 export const exampleApi = {

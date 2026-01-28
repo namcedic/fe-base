@@ -1,6 +1,6 @@
 import { Button as AntButton, ButtonProps as AntButtonProps } from 'antd';
 
-import { cn } from '@/utils/cn';
+import { cn } from '@root/utils/cn';
 
 interface ButtonProps extends AntButtonProps {
   className?: string;
