@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const noImage = '/static/images/no-image.jpg';
+const noImage = '/noto-sans/images/no-image.jpg';
 
 const Image = (props: any) => {
   const [error, setError] = useState(false);
